@@ -8,6 +8,14 @@ KrishiConnect is a full-stack, modular smart farming ecosystem that integrates *
 
 ![image](https://github.com/user-attachments/assets/edd1c068-ebd2-4a7c-912f-b8b671a755bb)
 
+---
+
+PLANTVILLAGE dataset for crop disease detection : https://www.kaggle.com/datasets/mohitsingh1804/plantvillage
+
+Crop Production dataset : https://www.kaggle.com/datasets/nikhilmahajan29/crop-production-statistics-india
+
+NPK values dataset for crop recommendation : https://www.kaggle.com/datasets/atharvaingle/crop-recommendation-dataset
+
 
 ## 📌 Key Highlights
 
