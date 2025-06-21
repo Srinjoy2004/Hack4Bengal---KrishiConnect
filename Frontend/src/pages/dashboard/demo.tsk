@@ -1,0 +1,944 @@
+import React, { useState } from 'react';
+import { 
+  Leaf, 
+  MapPin, 
+  Droplet, 
+  Thermometer, 
+  BarChart, 
+  AlertTriangle,
+  Save,
+  Wifi,
+  WifiOff,
+  Loader2,
+  Edit,
+  CheckCircle
+} from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+
+const Index = () => {
+  // Hardware Connection State
+  const [isHardwareConnected, setIsHardwareConnected] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+
+  // Real-time Data State
+  const [realTimeData, setRealTimeData] = useState({
+    nitrogen: '0',
+    phosphorus: '0',
+    potassium: '0',
+    ph: '0',
+    humidity: '0',
+    soilMoisture: '0',
+    soilTemperature: '0'
+  });
+  const [isLoadingRealTimeData, setIsLoadingRealTimeData] = useState(false);
+
+  // Ideal Parameters State
+  const [idealParameters, setIdealParameters] = useState(null);
+  const [isGeneratingIdealParams, setIsGeneratingIdealParams] = useState(false);
+
+  // Ideal Crop State
+  const [idealCrop, setIdealCrop] = useState(null);
+  const [isGeneratingIdealCrop, setIsGeneratingIdealCrop] = useState(false);
+
+  // Manual Input State
+  const [manualInput, setManualInput] = useState({
+    state: '',
+    district: '',
+    season: '',
+    area: '',
+    year: ''
+  });
+
+  // Crop Prediction State
+  const [cropPrediction, setCropPrediction] = useState(null);
+  const [isPredictingCrop, setIsPredictingCrop] = useState(false);
+  const [hasPredicted, setHasPredicted] = useState(false);
+
+  // Alerts State
+  const [alerts, setAlerts] = useState([]);
+  const [isGeneratingAlerts, setIsGeneratingAlerts] = useState(false);
+
+  // Rainfall State
+  const [rainfall, setRainfall] = useState('0');
+
+  // Data for dropdowns
+  const indianStates = [
+    'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
+    'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
+    'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
+    'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
+    'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'
+  ];
+
+  const districts = {
+    'Andhra Pradesh': ['Visakhapatnam', 'Vijayawada', 'Guntur', 'Nellore', 'Kurnool', 'Rajahmundry', 'Tirupati', 'Kadapa', 'Anantapur', 'Chittoor'],
+    'Arunachal Pradesh': ['Itanagar', 'Naharlagun', 'Pasighat', 'Tezpur', 'Bomdila', 'Ziro', 'Along', 'Changlang', 'Tezu', 'Khonsa'],
+    'Assam': ['Guwahati', 'Silchar', 'Dibrugarh', 'Jorhat', 'Nagaon', 'Tinsukia', 'Tezpur', 'Bongaigaon', 'Dhubri', 'North Lakhimpur'],
+    'Bihar': ['Patna', 'Gaya', 'Bhagalpur', 'Muzaffarpur', 'Purnia', 'Darbhanga', 'Bihar Sharif', 'Arrah', 'Begusarai', 'Katihar'],
+    'Chhattisgarh': ['Raipur', 'Bhilai', 'Bilaspur', 'Korba', 'Durg', 'Rajnandgaon', 'Jagdalpur', 'Raigarh', 'Ambikapur', 'Mahasamund'],
+    'Goa': ['Panaji', 'Vasco da Gama', 'Margao', 'Mapusa', 'Ponda', 'Bicholim', 'Curchorem', 'Sanquelim', 'Valpoi', 'Quepem'],
+    'Gujarat': ['Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Bhavnagar', 'Jamnagar', 'Gandhinagar', 'Anand', 'Bharuch', 'Vapi'],
+    'Haryana': ['Gurgaon', 'Faridabad', 'Panipat', 'Ambala', 'Yamunanagar', 'Rohtak', 'Hisar', 'Karnal', 'Sonipat', 'Panchkula'],
+    'Himachal Pradesh': ['Shimla', 'Dharamshala', 'Solan', 'Mandi', 'Palampur', 'Baddi', 'Nahan', 'Kullu', 'Hamirpur', 'Una'],
+    'Jharkhand': ['Ranchi', 'Jamshedpur', 'Dhanbad', 'Bokaro', 'Deoghar', 'Phusro', 'Hazaribagh', 'Giridih', 'Ramgarh', 'Medininagar'],
+    'Karnataka': ['Bangalore', 'Mysore', 'Hubli-Dharwad', 'Mangalore', 'Belgaum', 'Gulbarga', 'Davanagere', 'Bellary', 'Bijapur', 'Shimoga'],
+    'Kerala': ['Thiruvananthapuram', 'Kochi', 'Kozhikode', 'Thrissur', 'Kollam', 'Palakkad', 'Alappuzha', 'Malappuram', 'Kannur', 'Kasaragod'],
+    'Madhya Pradesh': ['Bhopal', 'Indore', 'Gwalior', 'Jabalpur', 'Ujjain', 'Sagar', 'Dewas', 'Satna', 'Ratlam', 'Rewa'],
+    'Maharashtra': ['Mumbai', 'Pune', 'Nagpur', 'Nashik', 'Aurangabad', 'Solapur', 'Thane', 'Kolhapur', 'Sangli', 'Malegaon'],
+    'Manipur': ['Imphal', 'Thoubal', 'Bishnupur', 'Churachandpur', 'Senapati', 'Ukhrul', 'Chandel', 'Kakching', 'Jiribam', 'Tamenglong'],
+    'Meghalaya': ['Shillong', 'Tura', 'Jowai', 'Nongpoh', 'Baghmara', 'Williamnagar', 'Nongstoin', 'Mawkyrwat', 'Resubelpara', 'Ampati'],
+    'Mizoram': ['Aizawl', 'Lunglei', 'Saiha', 'Champhai', 'Kolasib', 'Serchhip', 'Mamit', 'Lawngtlai', 'Saitual', 'Khawzawl'],
+    'Nagaland': ['Kohima', 'Dimapur', 'Mokokchung', 'Tuensang', 'Wokha', 'Zunheboto', 'Phek', 'Kiphire', 'Longleng', 'Peren'],
+    'Odisha': ['Bhubaneswar', 'Cuttack', 'Rourkela', 'Berhampur', 'Sambalpur', 'Puri', 'Balasore', 'Bhadrak', 'Baripada', 'Jharsuguda'],
+    'Punjab': ['Amritsar', 'Ludhiana', 'Jalandhar', 'Patiala', 'Bathinda', 'Mohali', 'Firozpur', 'Hoshiarpur', 'Batala', 'Pathankot'],
+    'Rajasthan': ['Jaipur', 'Jodhpur', 'Kota', 'Bikaner', 'Udaipur', 'Ajmer', 'Bhilwara', 'Alwar', 'Bharatpur', 'Sikar'],
+    'Sikkim': ['Gangtok', 'Namchi', 'Geyzing', 'Mangan', 'Jorethang', 'Naya Bazar', 'Rangpo', 'Singtam', 'Pakyong', 'Ravangla'],
+    'Tamil Nadu': ['Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Salem', 'Tirunelveli', 'Tiruppur', 'Vellore', 'Erode', 'Thoothukkudi'],
+    'Telangana': ['Hyderabad', 'Warangal', 'Nizamabad', 'Khammam', 'Karimnagar', 'Ramagundam', 'Mahbubnagar', 'Nalgonda', 'Adilabad', 'Suryapet'],
+    'Tripura': ['Agartala', 'Dharmanagar', 'Udaipur', 'Kailasahar', 'Belonia', 'Khowai', 'Ambassa', 'Ranir Bazar', 'Sonamura', 'Kumarghat'],
+    'Uttar Pradesh': ['Lucknow', 'Kanpur', 'Ghaziabad', 'Agra', 'Varanasi', 'Meerut', 'Allahabad', 'Bareilly', 'Aligarh', 'Moradabad'],
+    'Uttarakhand': ['Dehradun', 'Haridwar', 'Roorkee', 'Haldwani-cum-Kathgodam', 'Rudrapur', 'Kashipur', 'Rishikesh', 'Pithoragarh', 'Jaspur', 'Manglaur'],
+    'West Bengal': ['Kolkata', 'Howrah', 'Durgapur', 'Asansol', 'Siliguri', 'Malda', 'Bardhaman', 'Baharampur', 'Habra', 'Kharagpur']
+  };
+
+  const seasons = ['Kharif', 'Rabi', 'Zaid'];
+  const years = ['2024', '2023', '2022', '2021', '2020'];
+
+  // Weather forecast function
+  const getWeatherForecast = async (city: string, apiKey: string) => {
+    console.log(`Fetching weather forecast for ${city}...`);
+    const url = `https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${apiKey}&units=metric`;
+
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        console.error(`Failed to fetch weather data for ${city}: ${response.statusText}`);
+        throw new Error(`Failed to fetch weather data for ${city}`);
+      }
+
+      const data = await response.json();
+      const nextDay = data.list.slice(0, 8); // Next 24 hours (3-hour intervals)
+
+      let totalTemp = 0;
+      let totalRain = 0;
+
+      nextDay.forEach(entry => {
+        totalTemp += entry.main.temp;
+        totalRain += entry.rain?.['3h'] || 0;
+      });
+
+      const avgTemp = (totalTemp / 8).toFixed(2);
+      const rainAmount = totalRain.toFixed(2);
+
+      console.log(`Average Temp in ${city}: ${avgTemp}°C`);
+      console.log(`Total Rainfall in ${city} (next 24h): ${rainAmount} mm`);
+
+      return { avgTemp, rainAmount };
+    } catch (error) {
+      console.error(`Error fetching weather data for ${city}:`, error);
+      throw error;
+    }
+  };
+
+  // Fetch ideal parameters from the new API
+  const fetchIdealParameters = async (cropName: string) => {
+    setIsGeneratingIdealParams(true);
+    const apiUrl = 'https://ideal-crop-agrismart.onrender.com/get_details';
+    
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ crop: cropName })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch ideal parameters: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      setIdealParameters({
+        nitrogen: data.details.N,
+        phosphorus: data.details.P,
+        potassium: data.details.K,
+        ph: data.details.pH,
+        soilMoisture: data.details.soil_moisture,
+        humidity: data.details.humidity || Math.floor(Math.random() * 15) + 70,
+        soilTemperature: data.details.soilTemperature || Math.floor(Math.random() * 8) + 22
+      });
+    } catch (error) {
+      console.error('Error fetching ideal parameters:', error);
+      setIdealParameters(null);
+    } finally {
+      setIsGeneratingIdealParams(false);
+    }
+  };
+
+  // Simulate hardware connection and fetch real-time data
+  const connectHardware = async () => {
+    setIsConnecting(true);
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    setIsHardwareConnected(true);
+    setIsConnecting(false);
+    setHasPredicted(false);
+    setRainfall('0');
+    setIdealCrop(null);
+    setCropPrediction(null);
+    setIdealParameters(null);
+    setAlerts([]);
+    
+    fetchRealTimeData();
+  };
+
+  // Fetch real-time data from ThingSpeak API
+  const fetchRealTimeData = async () => {
+    setIsLoadingRealTimeData(true);
+    const apiUrl = 'https://api.thingspeak.com/channels/2992127/feeds.json?api_key=ZKLWWWNN9B5KBN4V';
+
+    try {
+      const response = await fetch(apiUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch sensor data: ${response.statusText}`);
+      }
+      const data = await response.json();
+      const latestEntry = data.feeds[data.feeds.length - 1];
+
+      const sensorData = {
+        nitrogen: (parseFloat(latestEntry.field5) * 1.95).toFixed(2),
+        phosphorus: (parseFloat(latestEntry.field6) * 1.95).toFixed(2),
+        potassium: (parseFloat(latestEntry.field7) * 1.95).toFixed(2),
+        ph: parseFloat(latestEntry.field8).toFixed(1),
+        humidity: parseFloat(latestEntry.field2).toFixed(0),
+        soilMoisture: parseFloat(latestEntry.field4).toFixed(0),
+        soilTemperature: parseFloat(latestEntry.field3).toFixed(0)
+      };
+
+      console.log("Air Temperature:", parseFloat(latestEntry.field1).toFixed(0), "°C");
+      console.log("Air Humidity:", sensorData.humidity, "%");
+      console.log("Soil Temperature:", sensorData.soilTemperature, "°C");
+      console.log("Soil Moisture:", sensorData.soilMoisture, "%");
+      console.log("Nitrogen (N):", sensorData.nitrogen);
+      console.log("Phosphorus (P):", sensorData.phosphorus);
+      console.log("Potassium (K):", sensorData.potassium);
+      console.log("Soil pH:", sensorData.ph);
+
+      setRealTimeData(sensorData);
+    } catch (error) {
+      console.error('Error fetching sensor data:', error);
+      setRealTimeData({
+        nitrogen: '0',
+        phosphorus: '0',
+        potassium: '0',
+        ph: '0',
+        humidity: '0',
+        soilMoisture: '0',
+        soilTemperature: '0'
+      });
+    } finally {
+      setIsLoadingRealTimeData(false);
+    }
+  };
+
+  // Fetch predicted production from the new API
+  const fetchPredictedProduction = async (cropName: string) => {
+    const apiUrl = 'https://rudra2003-price-prediction-crops.hf.space/predict';
+    
+    const requestBody = {
+      state: manualInput.state,
+      district: manualInput.district,
+      crop: cropName,
+      season: manualInput.season,
+      area: parseFloat(manualInput.area),
+      year: parseInt(manualInput.year)
+    };
+
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch predicted production: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.predicted_production;
+    } catch (error) {
+      console.error('Error fetching predicted production:', error);
+      throw error;
+    }
+  };
+
+  // Generate ideal crop suggestion using crop prediction API
+  const generateIdealCrop = async () => {
+    setIsGeneratingIdealCrop(true);
+    const apiUrl = 'https://crop-recommendation-gc3x.onrender.com/predict_crops';
+    
+    const requestBody = {
+      n: parseFloat(realTimeData.nitrogen),
+      p: parseFloat(realTimeData.phosphorus),
+      k: parseFloat(realTimeData.potassium),
+      temp: parseFloat(realTimeData.soilTemperature),
+      humidity: parseFloat(realTimeData.humidity),
+      ph: parseFloat(realTimeData.ph),
+      rainfall: parseFloat(rainfall)
+    };
+
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch crop prediction: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const topPrediction = data.predictions[0];
+
+      const topCrop = {
+        name: topPrediction.crop,
+        confidence: topPrediction.confidence
+      };
+
+      console.log(`Top Predicted Crop: ${topCrop.name} with confidence ${topCrop.confidence}%`);
+
+      const predictedProduction = await fetchPredictedProduction(topCrop.name);
+      console.log(`Predicted Production for ${topCrop.name}: ${predictedProduction} tons`);
+
+      setIdealCrop({
+        name: topCrop.name,
+        suitability: topCrop.confidence,
+        reason: `Based on current soil conditions and weather data, ${topCrop.name} is predicted with ${topCrop.confidence}% confidence.`
+      });
+
+      await fetchIdealParameters(topCrop.name);
+
+      const prediction = {
+        expectedProduce: predictedProduction.toFixed(1),
+        estimatedIncome: (Math.random() * 300000 + 200000).toFixed(0)
+      };
+      setCropPrediction(prediction);
+    } catch (error) {
+      console.error('Error fetching crop prediction:', error);
+      alert("Failed to fetch crop prediction. Please try again later.");
+    } finally {
+      setIsGeneratingIdealCrop(false);
+      setIsPredictingCrop(false);
+      setHasPredicted(true);
+    }
+  };
+
+  // Handle crop prediction
+  const handleCropPrediction = async () => {
+    if (!manualInput.state || !manualInput.district || !manualInput.season || !manualInput.area || !manualInput.year) {
+      alert('Please fill in all fields');
+      return;
+    }
+
+    if (!isHardwareConnected) {
+      alert('Please connect hardware sensors to fetch real-time data before predicting crops.');
+      return;
+    }
+
+    if (hasPredicted) {
+      alert('Crop prediction has already been made. Please reconnect hardware to reset and predict again.');
+      return;
+    }
+    
+    setIsPredictingCrop(true);
+    
+    try {
+      const apiKey = "04bf89ecabf9ac4cae7a7173c5cdd1bb";
+      const weatherData = await getWeatherForecast(manualInput.district, apiKey);
+      
+      setRainfall(weatherData.rainAmount);
+      console.log(`Rainfall for ${manualInput.district}: ${weatherData.rainAmount} mm`);
+
+      await generateIdealCrop();
+      await generateAlerts();
+    } catch (error) {
+      alert(`Failed to fetch weather data for ${manualInput.district}. Please try again later.`);
+      setIsPredictingCrop(false);
+    }
+  };
+
+  // Generate smart alerts and suggestions
+  const generateAlerts = async () => {
+    setIsGeneratingAlerts(true);
+    await new Promise(resolve => setTimeout(resolve, 2500));
+    
+    const alertsData = [
+      {
+        type: "Rainfall Alert",
+        message: "Moderate rainfall expected in 2-3 days. Prepare irrigation systems accordingly.",
+        severity: "medium",
+        icon: "☔"
+      },
+      {
+        type: "Irrigation Status",
+        message: "Current soil moisture is optimal. Maintain regular irrigation schedule.",
+        severity: "low",
+        icon: "💧"
+      },
+      {
+        type: "Fertilizer Suggestion",
+        message: "Nitrogen levels are slightly low. Consider applying Urea fertilizer.",
+        severity: "medium",
+        icon: "🌱"
+      }
+    ];
+    
+    setAlerts(alertsData);
+    setIsGeneratingAlerts(false);
+  };
+
+  // Gauge component for displaying sensor values
+  const CircularGauge = ({ value, max, label, unit, color, ideal }: { 
+    value: number | string; 
+    max: number; 
+    label: string; 
+    unit: string; 
+    color: string; 
+    ideal?: number | string; 
+  }) => {
+    const percentage = Math.min((Number(value) / max) * 100, 100);
+    const circumference = 2 * Math.PI * 45;
+    const strokeDasharray = circumference;
+    const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+    return (
+      <div className="flex flex-col items-center p-4 bg-white rounded-lg border">
+        <div className="relative w-24 h-24 mb-2">
+          <svg className="w-24 h-24 transform -rotate-90" viewBox="0 0 100 100">
+            <circle
+              cx="50"
+              cy="50"
+              r="45"
+              stroke="#e5e7eb"
+              strokeWidth="8"
+              fill="transparent"
+            />
+            <circle
+              cx="50"
+              cy="50"
+              r="45"
+              stroke={color}
+              strokeWidth="8"
+              fill="transparent"
+              strokeDasharray={strokeDasharray}
+              strokeDashoffset={strokeDashoffset}
+              strokeLinecap="round"
+              className="transition-all duration-1000 ease-out"
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-xl font-bold" style={{ color }}>{value}</span>
+          </div>
+        </div>
+        <p className="text-sm font-medium text-gray-700">{label}</p>
+        <p className="text-xs text-gray-500">{unit}</p>
+        {ideal && (
+          <p className="text-xs text-green-600 mt-1">Ideal: {ideal}</p>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white border-b border-gray-200 p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
+              <Leaf className="w-5 h-5 text-white" />
+            </div>
+            <h1 className="text-xl font-bold text-green-800">Real Time Prediction</h1>
+          </div>
+          
+          {/* Hardware Connection Status */}
+          <div className="flex items-center space-x-2">
+            {isHardwareConnected ? (
+              <div className="flex items-center space-x-2">
+                <Wifi className="w-4 h-4 text-green-600" />
+                <span className="text-sm font-semibold text-green-600">Connected</span>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <WifiOff className="w-4 h-4 text-red-500" />
+                <span className="text-sm font-semibold text-red-500">Disconnected</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <div className="p-4 md:p-6 space-y-6">
+        {/* Welcome Section */}
+        <div className="bg-gradient-to-r from-blue-600 to-blue-500 rounded-lg p-6 text-white shadow-md">
+          <h2 className="text-2xl font-bold mb-2">Smart Agricultural Analysis</h2>
+          <p className="text-blue-100">Connect hardware sensors for AI-driven crop recommendations and real-time insights.</p>
+        </div>
+
+        {/* Hardware Connection Section */}
+        {!isHardwareConnected && (
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-xl font-bold text-gray-800">Connect Hardware Sensors</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <WifiOff className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">Soil Monitoring Device</h3>
+                <p className="text-gray-600 mb-6">Connect your IoT sensors to get real-time soil and environmental data</p>
+                <Button 
+                  onClick={connectHardware} 
+                  disabled={isConnecting}
+                  className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700"
+                  size="lg"
+                >
+                  {isConnecting ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span>Connecting to Hardware...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Wifi className="w-5 h-5" />
+                      <span>Connect Hardware</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Real-time Data and Ideal Parameters Grid */}
+        {isHardwareConnected && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Real-Time Sensor Data */}
+            <Card className="shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="text-xl font-bold text-gray-800">Real-Time Sensor Data</CardTitle>
+                {isLoadingRealTimeData && (
+                  <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                )}
+              </CardHeader>
+              <CardContent>
+                {isLoadingRealTimeData ? (
+                  <div className="text-center py-8">
+                    <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-2" />
+                    <p className="text-gray-600">Reading sensor data...</p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {/* NPK Values */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <CircularGauge 
+                        value={realTimeData.nitrogen} 
+                        max={100} 
+                        label="Nitrogen (N)" 
+                        unit="mg/kg"
+                        color="#3b82f6"
+                      />
+                      <CircularGauge 
+                        value={realTimeData.phosphorus} 
+                        max={100} 
+                        label="Phosphorus (P)" 
+                        unit="mg/kg"
+                        color="#f59e0b"
+                      />
+                      <CircularGauge 
+                        value={realTimeData.potassium} 
+                        max={100} 
+                        label="Potassium (K)" 
+                        unit="mg/kg"
+                        color="#8b5cf6"
+                      />
+                    </div>
+
+                    {/* Other Parameters */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <BarChart className="w-5 h-5 text-blue-500" />
+                          <span className="text-sm font-medium text-blue-800">pH Level</span>
+                        </div>
+                        <p className="text-2xl font-bold text-blue-600">{realTimeData.ph}</p>
+                      </div>
+
+                      <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <Droplet className="w-5 h-5 text-blue-500" />
+                          <span className="text-sm font-medium text-blue-800">Humidity</span>
+                        </div>
+                        <p className="text-2xl font-bold text-blue-600">{realTimeData.humidity}%</p>
+                      </div>
+
+                      <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <Droplet className="w-5 h-5 text-blue-500" />
+                          <span className="text-sm font-medium text-blue-800">Soil Moisture</span>
+                        </div>
+                        <p className="text-2xl font-bold text-blue-600">{realTimeData.soilMoisture}%</p>
+                      </div>
+
+                      <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <Thermometer className="w-5 h-5 text-blue-500" />
+                          <span className="text-sm font-medium text-blue-800">Soil Temperature</span>
+                        </div>
+                        <p className="text-2xl font-bold text-blue-600">{realTimeData.soilTemperature}°C</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Ideal Parameters from ML Model */}
+            <Card className="shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="text-xl font-bold text-gray-800">ML Model - Ideal Parameters</CardTitle>
+                {isGeneratingIdealParams && (
+                  <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                )}
+              </CardHeader>
+              <CardContent>
+                {isGeneratingIdealParams ? (
+                  <div className="text-center py-8">
+                    <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-2" />
+                    <p className="text-gray-600">AI analyzing optimal conditions...</p>
+                  </div>
+                ) : idealParameters ? (
+                  <div className="space-y-6">
+                    {/* NPK Ideal Values */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <CircularGauge 
+                        value={idealParameters.nitrogen} 
+                        max={100} 
+                        label="Ideal N" 
+                        unit="mg/kg"
+                        color="#3b82f6"
+                      />
+                      <CircularGauge 
+                        value={idealParameters.phosphorus} 
+                        max={100} 
+                        label="Ideal P" 
+                        unit="mg/kg"
+                        color="#f59e0b"
+                      />
+                      <CircularGauge 
+                        value={idealParameters.potassium} 
+                        max={100} 
+                        label="Ideal K" 
+                        unit="mg/kg"
+                        color="#8b5cf6"
+                      />
+                    </div>
+
+                    {/* Other Ideal Parameters */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <BarChart className="w-5 h-5 text-blue-500" />
+                          <span className="text-sm font-medium text-blue-800">Ideal pH</span>
+                        </div>
+                        <p className="text-2xl font-bold text-blue-600">{idealParameters.ph}</p>
+                      </div>
+
+                      <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <Droplet className="w-5 h-5 text-blue-500" />
+                          <span className="text-sm font-medium text-blue-800">Ideal Humidity</span>
+                        </div>
+                        <p className="text-2xl font-bold text-blue-600">{idealParameters.humidity}%</p>
+                      </div>
+
+                      <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <Droplet className="w-5 h-5 text-blue-500" />
+                          <span className="text-sm font-medium text-blue-800">Ideal Soil Moisture</span>
+                        </div>
+                        <p className="text-2xl font-bold text-blue-600">{idealParameters.soilMoisture}%</p>
+                      </div>
+
+                      <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <Thermometer className="w-5 h-5 text-blue-500" />
+                          <span className="text-sm font-medium text-blue-800">Ideal Soil Temp</span>
+                        </div>
+                        <p className="text-2xl font-bold text-blue-600">{idealParameters.soilTemperature}°C</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-600">No ideal parameters available. Please predict a crop first.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Manual Input Section */}
+        {isHardwareConnected && (
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-xl font-bold text-gray-800">Manual Input for Crop Prediction</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="state">State in India</Label>
+                  <Select value={manualInput.state} onValueChange={(value) => {
+                    setManualInput({...manualInput, state: value, district: ''});
+                  }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select State" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {indianStates.map((state) => (
+                        <SelectItem key={state} value={state}>{state}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="district">District in India</Label>
+                  <Select 
+                    value={manualInput.district} 
+                    onValueChange={(value) => setManualInput({...manualInput, district: value})}
+                    disabled={!manualInput.state}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select District" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {manualInput.state && districts[manualInput.state] ? 
+                        districts[manualInput.state].map((district) => (
+                          <SelectItem key={district} value={district}>{district}</SelectItem>
+                        )) : null}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="season">Season</Label>
+                  <Select value={manualInput.season} onValueChange={(value) => setManualInput({...manualInput, season: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Season" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {seasons.map((season) => (
+                        <SelectItem key={season} value={season}>{season}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="area">Area (Hectares)</Label>
+                  <Input
+                    id="area"
+                    placeholder="Enter area"
+                    value={manualInput.area}
+                    onChange={(e) => setManualInput({...manualInput, area: e.target.value})}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="year">Year</Label>
+                  <Select value={manualInput.year} onValueChange={(value) => setManualInput({...manualInput, year: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {years.map((year) => (
+                        <SelectItem key={year} value={year}>{year}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-end">
+                  <Button 
+                    onClick={handleCropPrediction} 
+                    disabled={isPredictingCrop || hasPredicted}
+                    className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
+                  >
+                    {isPredictingCrop ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Predicting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <BarChart className="w-4 h-4" />
+                        <span>Predict Crop</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* AI Recommended Crop */}
+        {idealCrop && (
+          <Card className="shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-xl font-bold text-gray-800">AI Recommended Crop</CardTitle>
+              {isGeneratingIdealCrop && (
+                <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+              )}
+            </CardHeader>
+            <CardContent>
+              {isGeneratingIdealCrop ? (
+                <div className="text-center py-6">
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-2" />
+                  <p className="text-gray-600">Analyzing soil conditions for optimal crop...</p>
+                </div>
+              ) : (
+                <div className="bg-gradient-to-r from-blue-100 to-blue-50 rounded-lg p-6 border border-blue-200">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
+                      <Leaf className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-2xl font-bold text-blue-800 mb-2">{idealCrop.name}</h3>
+                      <div className="flex items-center space-x-4 mb-2">
+                        <span className="text-blue-600 font-semibold">Suitability: {idealCrop.suitability}%</span>
+                        <div className="flex-1 bg-blue-200 rounded-full h-3">
+                          <div 
+                            className="bg-blue-600 h-3 rounded-full transition-all duration-1000"
+                            style={{ width: `${idealCrop.suitability}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                      <p className="text-blue-700">{idealCrop.reason}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Crop Prediction Results */}
+        {cropPrediction && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-xl font-bold text-blue-800">Expected Produced Crop</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
+                  <div className="flex items-center space-x-4">
+                    <BarChart className="w-8 h-8 text-blue-600" />
+                    <div>
+                      <p className="text-3xl font-bold text-blue-800">{cropPrediction.expectedProduce} tons</p>
+                      <p className="text-blue-600">Per hectare production</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-xl font-bold text-blue-800">Estimated Income</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
+                  <div className="flex items-center space-x-4">
+                    <CheckCircle className="w-8 h-8 text-blue-600" />
+                    <div>
+                      <p className="text-3xl font-bold text-blue-800">₹{parseInt(cropPrediction.estimatedIncome).toLocaleString()}</p>
+                      <p className="text-blue-600">Expected total income</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Smart Alerts & Suggestions */}
+        {alerts.length > 0 && (
+          <Card className="shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-xl font-bold text-gray-800">Smart Alerts & Suggestions</CardTitle>
+              {isGeneratingAlerts && (
+                <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+              )}
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {alerts.map((alert, index) => (
+                  <div 
+                    key={index}
+                    className={`p-6 rounded-lg border-l-4 ${
+                      alert.severity === 'low' ? 'bg-blue-50 border-blue-500' :
+                      alert.severity === 'medium' ? 'bg-yellow-50 border-yellow-500' :
+                      'bg-red-50 border-red-500'
+                    }`}
+                  >
+                    <div className="flex items-start space-x-3">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-3xl">{alert.icon}</span>
+                        <AlertTriangle className={`w-6 h-6 ${
+                          alert.severity === 'low' ? 'text-blue-500' :
+                          alert.severity === 'medium' ? 'text-yellow-500' :
+                          'text-red-500'
+                        }`} />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className={`text-lg font-semibold mb-2 ${
+                          alert.severity === 'low' ? 'text-blue-800' :
+                          alert.severity === 'medium' ? 'text-yellow-800' :
+                          'text-red-800'
+                        }`}>
+                          {alert.type}
+                        </h4>
+                        <p className={`text-sm ${
+                          alert.severity === 'low' ? 'text-blue-700' :
+                          alert.severity === 'medium' ? 'text-yellow-700' :
+                          'text-red-700'
+                        }`}>
+                          {alert.message}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Index;
